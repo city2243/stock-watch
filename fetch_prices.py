@@ -180,6 +180,7 @@ def main():
             new[tk] = prev
             continue
         px, d, src = q
+        px = round(px, 2)
         z = zone(px, v)
         prev_hist = prev.get("hist", [])
         if len(prev_hist) < 20:   # 第一次:從 Yahoo 補半年收盤,走勢圖才有東西看
