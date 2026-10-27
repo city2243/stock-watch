@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>個股追蹤看板</title>
+<meta name="description" content="自己研究過的個股:最新看法、便宜價與到價提醒">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232a78d6'/><path d='M3 11l3-3 2 2 5-5' stroke='white' stroke-width='2' fill='none'/></svg>">
+<style>
+:root{
+ --bg:#f4f4f2;--surface:#fcfcfb;--line:#e4e3de;--grid:#ecebe7;
+ --ink:#0b0b0b;--ink2:#52514e;--ink3:#7a7975;
+ --accent:#2a78d6;
+ --z-buy:#0ca30c;--z-half:#7cc87c;--z-wait:#c9c8c2;--z-trim:#fab219;--z-over:#ec835a;--z-out:#d03b3b;--z-risk:#6250d6;
+ --chip-buy:#e3f4e3;--chip-half:#eef7ee;--chip-wait:#efefec;--chip-trim:#fdf1d6;--chip-over:#fbe5dc;--chip-out:#f8dede;--chip-risk:#e8e5fa;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --bg:#121211;--surface:#1a1a19;--line:#2e2e2c;--grid:#262624;
+ --ink:#f0efec;--ink2:#c3c2b7;--ink3:#8f8e88;--accent:#3987e5;
+ --z-wait:#55544f;--z-risk:#9085e9;
+ --chip-buy:#163016;--chip-half:#1c2a1c;--chip-wait:#262624;--chip-trim:#3a3016;--chip-over:#3a2419;--chip-out:#3a1b1b;--chip-risk:#25213f;
+}}
+:root[data-theme="dark"]{
+ --bg:#121211;--surface:#1a1a19;--line:#2e2e2c;--grid:#262624;
+ --ink:#f0efec;--ink2:#c3c2b7;--ink3:#8f8e88;--accent:#3987e5;
+ --z-wait:#55544f;--z-risk:#9085e9;
+ --chip-buy:#163016;--chip-half:#1c2a1c;--chip-wait:#262624;--chip-trim:#3a3016;--chip-over:#3a2419;--chip-out:#3a1b1b;--chip-risk:#25213f;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;margin-bottom:14px}
+h1{font-size:22px;margin:0}
+.sub{color:var(--ink2);font-size:13px}
+h2{font-size:17px;margin:28px 0 10px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.tile b{display:block;font-size:26px;line-height:1.2;font-variant-numeric:tabular-nums}
+.tile span{color:var(--ink2);font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--z-buy);border-radius:10px;padding:12px 14px;cursor:pointer}
+.card.risk{border-left-color:var(--z-risk)}.card.half{border-left-color:var(--z-half)}
+.card h3{margin:0 0 4px;font-size:16px}
+.card .px{font-size:20px;font-variant-numeric:tabular-nums}
+.card p{margin:4px 0 0;color:var(--ink2);font-size:13px}
+.warn{color:var(--z-out);font-size:13px}
+.empty{color:var(--ink2);background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:14px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+.filters input,.filters select{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.filters input{flex:1;min-width:160px}
+.tbl-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+th{color:var(--ink2);font-weight:600;font-size:12.5px;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--surface)}
+th.l,td.l{text-align:left}
+th[aria-sort]::after{content:" ▾";color:var(--ink3)}th[aria-sort=ascending]::after{content:" ▴"}
+tbody tr{cursor:pointer}tbody tr:hover{background:var(--grid)}
+tr.open{background:var(--grid)}
+.nm{font-weight:600}.tk{color:var(--ink3);font-size:12px;margin-right:6px}
+.chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink)}
+.z-買進區{background:var(--chip-buy)}.z-加碼區{background:var(--chip-half)}.z-觀望區{background:var(--chip-wait)}.z-減碼區{background:var(--chip-trim)}.z-超過目標區{background:var(--chip-over)}.z-出清區{background:var(--chip-out)}.z-風險區{background:var(--chip-risk)}
+.v-偏多{color:var(--z-buy)}.v-減碼{color:var(--z-out)}.v-中立偏空{color:var(--z-over)}
+.muted{color:var(--ink3)}
+.stale{color:var(--z-over);font-size:12px}
+.ladder{display:block}
+td.detail{text-align:left;white-space:normal;background:var(--bg);padding:14px 16px}
+.dgrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px}
+@media (max-width:760px){.dgrid{grid-template-columns:1fr}}
+.dgrid h4{margin:0 0 6px;font-size:14px}
+.dgrid ul{margin:0;padding-left:18px}.dgrid li{margin:2px 0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13.5px}
+.kv dt{color:var(--ink2)}.kv dd{margin:0}
+.hist{width:100%;font-size:13px}.hist td,.hist th{padding:4px 6px;white-space:normal}
+.chart{position:relative}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:12px;display:none;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink2);margin:8px 0 0}
+.legend i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.rules{font-size:13px;color:var(--ink2);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.rules li{margin:3px 0}
+button.theme{margin-left:auto;font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:8px;padding:4px 10px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+ <h1>個股追蹤看板</h1>
+ <span class="sub" id="stamp">載入中…</span>
+ <button class="theme" id="theme" type="button">深色/淺色</button>
+</header>
+
+<div class="tiles" id="tiles"></div>
+
+<h2>今天到價、可以考慮買的</h2>
+<div id="hits"></div>
+
+<h2>全部追蹤名單</h2>
+<div class="filters">
+ <input id="q" type="search" placeholder="搜尋代號或名稱">
+ <select id="fz"><option value="">全部區間</option></select>
+ <select id="fv"><option value="">全部看法</option><option>偏多</option><option>中立</option><option>中立偏空</option><option>減碼</option><option value="none">無評等(系統估值)</option></select>
+ <select id="fs"><option value="">全部來源</option><option>個案模型</option><option>README</option><option>石化追蹤</option></select>
+</div>
+<div class="tbl-wrap"><table id="tbl">
+ <thead><tr>
+  <th class="l" data-k="tk">公司</th>
+  <th class="l" data-k="view">看法</th>
+  <th data-k="px">現價</th>
+  <th data-k="buy_px" title="E(TP)÷1.3:到這裡有 30% 以上空間">便宜價</th>
+  <th data-k="half_px" title="E(TP)÷1.2:到這裡有 20% 以上空間">可買價</th>
+  <th data-k="etp">E(TP)</th>
+  <th data-k="gap" title="現價還要跌多少才到可買價">距可買價</th>
+  <th class="l" data-k="zrank">價位在哪一區</th>
+  <th data-k="model_date">模型日</th>
+ </tr></thead>
+ <tbody></tbody>
+</table></div>
+<div class="legend" id="legend"></div>
+
+<h2>區間怎麼算</h2>
+<div class="rules"><ul>
+ <li><b>便宜價</b>=E(TP)÷1.3(空間 30% 以上,「買進區」:滿部位分三批);<b>可買價</b>=E(TP)÷1.2(空間 20–30%,「加碼區」:半部位分兩批)。</li>
+ <li>可買價到 E(TP)×0.9 是觀望;E(TP)×0.9 到 E(TP) 減碼;超過 E(TP) 到樂觀價是超過目標;樂觀價以上出清。</li>
+ <li><b>風險區</b>=跌破悲觀情境價:不是停損點,先逐條核翻轉條件;沒翻=市場在定價悲觀情境,照買進區規則;翻了就出清。</li>
+ <li>評等是<b>減碼</b>的,到價也不買——先 refresh 模型。模型超過 45 天沒更新標「過期」,買之前先 refresh。</li>
+ <li>E(TP) 是各案 12 個月機率加權目標價;邊界 ÷1.3、÷1.2、×0.9 是事先定的規則,還沒有回測。與操作卡同一套。</li>
+ <li>股價每個交易日收盤後自動更新(台股/日股傍晚、美股隔天清晨);新進可買區間會在 GitHub 開 issue 通知。</li>
+</ul></div>
+</div>
+
+<script>
+const ZONES=["風險區","買進區","加碼區","觀望區","減碼區","超過目標區","出清區"];
+const ZCOL={"風險區":"--z-risk","買進區":"--z-buy","加碼區":"--z-half","觀望區":"--z-wait","減碼區":"--z-trim","超過目標區":"--z-over","出清區":"--z-out"};
+const BUYZ=new Set(["風險區","買進區","加碼區"]);
+const $=s=>document.querySelector(s);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const f=(x,d)=>x==null||isNaN(x)?"—":(+x).toLocaleString("zh-TW",{maximumFractionDigits:d??(Math.abs(x)>=1000?0:Math.abs(x)>=100?1:2)});
+const pct=x=>x==null?"—":(x>0?"+":"")+(x*100).toFixed(1)+"%";
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let rows=[],sortK="zrank",sortAsc=true,openTk=null;
+
+try{const t=localStorage.getItem("sw-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}
+$("#theme").onclick=()=>{const dark=document.documentElement.dataset.theme?document.documentElement.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+ document.documentElement.dataset.theme=dark?"light":"dark";try{localStorage.setItem("sw-theme",document.documentElement.dataset.theme)}catch(e){};render()};
+
+Promise.all([fetch("data/views.json").then(r=>r.json()),fetch("data/prices.json").then(r=>r.json()).catch(()=>({stocks:{}})),fetch("data/alerts.json").then(r=>r.json()).catch(()=>[])])
+.then(([V,P,A])=>{
+ rows=V.stocks.map(s=>{const p=P.stocks[s.tk]||{};const px=p.px??null;
+  return {...s,px,pd:p.d,zone:p.zone||null,zone_since:p.zone_since,hist:p.hist||[],
+   gap:px&&s.half_px?1-s.half_px/px:null,up12:px&&s.etp?s.etp/px-1:null,
+   zrank:p.zone?ZONES.indexOf(p.zone):99}});
+ $("#stamp").textContent=`股價更新 ${P.updated||"—"}・看法彙整 ${V.built}・共 ${rows.length} 檔`;
+ ZONES.forEach(z=>$("#fz").insertAdjacentHTML("beforeend",`<option>${z}</option>`));
+ $("#legend").innerHTML=ZONES.map(z=>`<span><i style="background:var(${ZCOL[z]})"></i>${z}</span>`).join("")+`<span>▏黑線=現價</span>`;
+ ["#q","#fz","#fv","#fs"].forEach(id=>$(id).addEventListener("input",render));
+ document.querySelectorAll("th[data-k]").forEach(th=>th.onclick=()=>{const k=th.dataset.k;sortAsc=sortK===k?!sortAsc:true;sortK=k;render()});
+ window.ALERTS=A;render();
+});
+
+function render(){
+ const hits=rows.filter(r=>BUYZ.has(r.zone)).sort((a,b)=>a.zrank-b.zrank||a.gap-b.gap);
+ const stale=rows.filter(r=>r.stale).length;
+ const near=rows.filter(r=>r.gap!=null&&r.gap>0&&r.gap<=0.1).length;
+ $("#tiles").innerHTML=[
+  [rows.length,"追蹤中的公司"],
+  [hits.filter(r=>r.view!=="減碼").length,"在可買價以下(評等非減碼)"],
+  [near,"再跌 10% 內就到可買價"],
+  [stale,"模型超過 45 天要 refresh"]].map(([n,t])=>`<div class="tile"><b>${n}</b><span>${t}</span></div>`).join("");
+
+ $("#hits").innerHTML=hits.length?`<div class="cards">${hits.map(r=>{
+  const cls=r.zone==="風險區"?"risk":r.zone==="加碼區"?"half":"";
+  const w=r.view==="減碼"?`<p class="warn">⚠ 評等減碼:到價也不買,先 refresh 模型</p>`:r.stale?`<p class="warn">⚠ 模型 ${r.age_days} 天沒更新,先 refresh</p>`:"";
+  const rk=r.zone==="風險區"?`<p class="warn">⚠ 跌破悲觀價 ${f(r.scenarios.bear)}:先核翻轉條件</p>`:"";
+  return `<div class="card ${cls}" data-tk="${r.tk}"><h3><span class="tk">${r.tk}</span>${esc(r.nm)} <span class="chip z-${r.zone}">${r.zone}</span></h3>
+   <div class="px">${f(r.px)} <span class="muted" style="font-size:13px">${r.pd||""}</span></div>
+   <p>便宜價 ≤${f(r.buy_px)}・可買價 ≤${f(r.half_px)}・E(TP) ${f(r.etp)}(空間 ${pct(r.up12)})</p>
+   <p>看法:${esc(r.rating||"系統估值")}・模型日 ${r.model_date||"—"}${r.zone_since?`・${r.zone_since} 起在此區`:""}</p>${rk}${w}</div>`}).join("")}</div>`
+  :`<div class="empty">目前沒有股票在可買價以下。最接近的:${rows.filter(r=>r.gap>0).sort((a,b)=>a.gap-b.gap).slice(0,3).map(r=>`${r.nm} 還差 ${pct(r.gap)}`).join("、")}</div>`;
+ document.querySelectorAll(".card").forEach(c=>c.onclick=()=>{openTk=c.dataset.tk;$("#q").value="";render();document.querySelector(`tr[data-tk="${openTk}"]`)?.scrollIntoView({block:"center"})});
+
+ const q=$("#q").value.trim().toLowerCase(),fz=$("#fz").value,fv=$("#fv").value,fs=$("#fs").value;
+ let list=rows.filter(r=>(!q||(r.tk+r.nm).toLowerCase().includes(q))&&(!fz||r.zone===fz)&&(!fv||(fv==="none"?!r.view:r.view===fv))&&(!fs||r.src===fs));
+ list.sort((a,b)=>{let x=a[sortK],y=b[sortK];if(x==null)return 1;if(y==null)return -1;
+  const c=typeof x==="string"?x.localeCompare(y,"zh-Hant"):x-y;return (sortAsc?c:-c)||(a.gap??9)-(b.gap??9)});
+ document.querySelectorAll("th[data-k]").forEach(th=>th.toggleAttribute("aria-sort",th.dataset.k===sortK)||th.dataset.k===sortK&&th.setAttribute("aria-sort",sortAsc?"ascending":"descending"));
+ $("#tbl tbody").innerHTML=list.map(r=>{
+  const tr=`<tr data-tk="${r.tk}" class="${openTk===r.tk?"open":""}">
+   <td class="l"><span class="tk">${r.tk}</span><span class="nm">${esc(r.nm)}</span></td>
+   <td class="l ${r.view?"v-"+r.view:"muted"}">${esc(r.view||"系統估值")}</td>
+   <td>${f(r.px)}${r.ccy!=="TWD"?` <span class="muted">${r.ccy}</span>`:""}</td>
+   <td>${f(r.buy_px)}</td><td>${f(r.half_px)}</td><td>${f(r.etp)}</td>
+   <td>${r.gap==null?"—":r.gap<=0?`<b class="v-偏多">已到</b>`:pct(-r.gap)}</td>
+   <td class="l">${ladder(r)} ${r.zone?`<span class="chip z-${r.zone}">${r.zone}</span>`:"<span class='muted'>無價</span>"}</td>
+   <td>${r.model_date||"—"}${r.stale?` <span class="stale">過期</span>`:""}</td></tr>`;
+  return tr+(openTk===r.tk?`<tr><td class="detail" colspan="9">${detail(r)}</td></tr>`:"");
+ }).join("");
+ document.querySelectorAll("#tbl tbody tr[data-tk]").forEach(tr=>tr.onclick=()=>{openTk=openTk===tr.dataset.tk?null:tr.dataset.tk;render()});
+ if(openTk){const r=rows.find(x=>x.tk===openTk);if(r)drawChart(r)}
+}
+
+function ladder(r){
+ const W=170,H=12,s=r.scenarios||{},e=r.etp;if(!e)return "";
+ const pts=[s.bear,r.buy_px,r.half_px,r.trim_px,e,s.bull,r.px].filter(x=>x>0);
+ const lo=Math.min(...pts)*0.93,hi=Math.max(...pts)*1.05,X=v=>(v-lo)/(hi-lo)*W;
+ const b=[[lo,s.bear||lo,"風險區"],[s.bear||lo,r.buy_px,"買進區"],[r.buy_px,r.half_px,"加碼區"],[r.half_px,r.trim_px,"觀望區"],[r.trim_px,e,"減碼區"],[e,s.bull||hi,"超過目標區"],[s.bull||hi,hi,"出清區"]];
+ let g=b.filter(([a,c])=>c>a).map(([a,c,z])=>{const x=X(Math.max(a,lo)),w=Math.max(X(c)-x-2,0);return `<rect x="${x}" y="3" width="${w}" height="6" rx="1.5" fill="var(${ZCOL[z]})"><title>${z} ${f(a)}–${f(c)}</title></rect>`}).join("");
+ if(r.px)g+=`<rect x="${X(r.px)-1.5}" y="0" width="3" height="${H}" rx="1" fill="var(--ink)"><title>現價 ${f(r.px)}</title></rect>`;
+ return `<svg class="ladder" width="${W}" height="${H}" style="display:inline-block;vertical-align:middle" role="img" aria-label="價位區間">${g}</svg>`;
+}
+
+function detail(r){
+ const s=r.scenarios||{},p=r.probs||{};
+ const sc=["bear","base","bull"].map((k,i)=>`<dt>${["悲觀","基本","樂觀"][i]}${p[k]!=null?`(${Math.round(p[k]*100)}%)`:""}</dt><dd>${f(s[k])}</dd>`).join("");
+ const li=a=>a&&a.length?`<ul>${a.map(x=>`<li>${esc(typeof x==="string"?x:`${x.d||""} ${x.what||""}`)}</li>`).join("")}</ul>`:`<p class="muted">原文沒寫</p>`;
+ const h=(r.history||[]).length?`<table class="hist"><thead><tr><th class="l">日期</th><th class="l">版本</th><th>E(TP)</th><th class="l">評等</th><th class="l">為什麼改</th></tr></thead><tbody>${r.history.map(x=>`<tr><td class="l">${esc(x.date||"")}</td><td class="l">${esc(x.ver||"")}</td><td>${f(x.etp)}</td><td class="l">${esc(x.rating||"")}</td><td class="l">${esc(x.note||"")}</td></tr>`).join("")}</tbody></table>`:`<p class="muted">只有一版</p>`;
+ return `<div class="dgrid"><div>
+  <h4>看法</h4><p style="margin:0 0 10px">${esc(r.thesis||"—")}</p>
+  <h4>價格走勢與買點(${r.ccy})</h4><div class="chart" id="ch"><div class="tip"></div></div>
+  <h4 style="margin-top:12px">看法怎麼變過</h4>${h}
+ </div><div>
+  <dl class="kv"><dt>評等</dt><dd>${esc(r.rating||"系統估值,無評等")}</dd><dt>E(TP)</dt><dd>${f(r.etp)}(模型當時股價 ${f(r.close_at_model)})</dd>${sc}
+  <dt>便宜價</dt><dd>≤ ${f(r.buy_px)}</dd><dt>可買價</dt><dd>≤ ${f(r.half_px)}</dd><dt>減碼價</dt><dd>≥ ${f(r.trim_px)}</dd>
+  <dt>模型日</dt><dd>${r.model_date||"—"}(${r.age_days??"—"} 天前${r.stale?",過期要 refresh":""})</dd><dt>來源</dt><dd>${esc(r.src)}${r.case?` ・ cases/${esc(r.case)}`:""}</dd></dl>
+  <h4 style="margin-top:12px">會轉好的條件(催化劑)</h4>${li(r.up)}
+  <h4 style="margin-top:10px">會轉壞的條件(翻轉)</h4>${li(r.down)}
+  <h4 style="margin-top:10px">接下來要看</h4>${li(r.next_checks)}
+ </div></div>`;
+}
+
+function drawChart(r){
+ const box=$("#ch");if(!box)return;const h=r.hist||[];
+ if(h.length<2){box.insertAdjacentHTML("beforeend",`<p class="muted" style="margin:0">價格紀錄從本看板上線起累積,目前 ${h.length} 天;現價 ${f(r.px)}。</p>`);return}
+ const W=box.clientWidth||520,H=200,m={l:44,r:62,t:10,b:22};
+ const refs=[["便宜價",r.buy_px,"--z-buy"],["可買價",r.half_px,"--z-half"],["E(TP)",r.etp,"--ink2"]];
+ const vals=h.map(x=>x[1]).concat(refs.map(x=>x[1]));
+ let lo=Math.min(...vals)*0.97,hi=Math.max(...vals)*1.03;
+ const X=i=>m.l+i/(h.length-1)*(W-m.l-m.r),Y=v=>m.t+(hi-v)/(hi-lo)*(H-m.t-m.b);
+ let g="";for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${m.l-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--ink3)">${f(v)}</text>`}
+ refs.forEach(([n,v,c])=>{g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(${c})" stroke-width="1.5" stroke-dasharray="4 3"/><text x="${W-m.r+4}" y="${Y(v)+4}" font-size="11" fill="var(--ink2)">${n}</text>`});
+ g+=`<path d="${h.map((x,i)=>(i?"L":"M")+X(i)+","+Y(x[1])).join("")}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+ g+=`<text x="${m.l}" y="${H-4}" font-size="11" fill="var(--ink3)">${h[0][0]}</text><text x="${W-m.r}" y="${H-4}" text-anchor="end" font-size="11" fill="var(--ink3)">${h[h.length-1][0]}</text>`;
+ g+=`<line class="cx" y1="${m.t}" y2="${H-m.b}" stroke="var(--ink3)" visibility="hidden"/><circle class="cd" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
+ box.insertAdjacentHTML("beforeend",`<svg width="${W}" height="${H}" role="img" aria-label="${esc(r.nm)} 收盤價走勢">${g}<rect x="${m.l}" y="0" width="${W-m.l-m.r}" height="${H}" fill="transparent"/></svg>`);
+ const svg=box.querySelector("svg"),tip=box.querySelector(".tip"),cx=svg.querySelector(".cx"),cd=svg.querySelector(".cd");
+ svg.addEventListener("mousemove",e=>{const bx=svg.getBoundingClientRect(),i=Math.max(0,Math.min(h.length-1,Math.round((e.clientX-bx.left-m.l)/(W-m.l-m.r)*(h.length-1))));
+  const x=X(i),y=Y(h[i][1]);cx.setAttribute("x1",x);cx.setAttribute("x2",x);cx.setAttribute("visibility","visible");cd.setAttribute("cx",x);cd.setAttribute("cy",y);cd.setAttribute("visibility","visible");
+  tip.style.display="block";tip.textContent=`${h[i][0]} 收 ${f(h[i][1])}`;tip.style.left=Math.min(x+10,W-120)+"px";tip.style.top=(y-30)+"px"});
+ svg.addEventListener("mouseleave",()=>{tip.style.display="none";cx.setAttribute("visibility","hidden");cd.setAttribute("visibility","hidden")});
+}
+</script>
+</body>
+</html>
