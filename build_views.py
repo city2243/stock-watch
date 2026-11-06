@@ -135,6 +135,8 @@ def main():
             nm = "Vistra"
         elif tk == "6506":
             nm = "安川電機"
+        elif tk == "5291":
+            nm = "邑昇"   # 案資料夾叫 5291_邑昇深研,是同日撞名,不是公司名
         stocks.append(_finish(tk, nm, d.name, v, hist.get(d.name) or readme.get(d.name)))
         seen.add(tk)
     for tk, (row, asof) in pet.items():   # 石化系統有、但沒有案資料夾的
